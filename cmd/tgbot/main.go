@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -157,10 +158,17 @@ func main() {
 		if err != nil || len(res) == 0 {
 			st.IncAiErrors()
 
-			req.Reply("Try again...")
 			if err != nil {
 				log.Println(err)
 			}
+
+			if errors.Is(err, context.DeadlineExceeded) {
+				req.Reply("Error: AI request timeout occurred. Try again.")
+				return
+			}
+
+			req.Reply("Error: AI is unavailable. Try again.")
+
 			return
 		}
 

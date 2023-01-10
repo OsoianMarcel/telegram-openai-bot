@@ -27,6 +27,19 @@ func NewClient(tgAPIToken string) *Client {
 		log.Panic(err)
 	}
 
+	webhook, err := tgClient.GetWebhookInfo()
+	if err != nil {
+		log.Panic(err)
+	}
+
+	if webhook.IsSet() {
+		log.Panicf(
+			"Conflict: can't use getUpdates method while Webhook (%s) is active; "+
+				"use deleteWebhook to delete the webhook and try again.",
+			webhook.URL,
+		)
+	}
+
 	return &Client{
 		tgAPIToken:      tgAPIToken,
 		tgClient:        tgClient,
