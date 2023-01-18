@@ -20,10 +20,10 @@ import (
 func main() {
 	ctx := context.Background()
 
-	st := stats.NewStats()
+	st := stats.New()
 
-	tc := tgclient.NewClient(os.Getenv("TG_APITOKEN"))
-	gptc := gptclient.NewClient(os.Getenv("GPT_AUTH_TOKEN"))
+	tc := tgclient.New(os.Getenv("TG_APITOKEN"))
+	gptc := gptclient.New(os.Getenv("GPT_AUTH_TOKEN"))
 
 	tc.AddCommandHandler("start", func(req *tgclient.Request) {
 		req.Send(

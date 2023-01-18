@@ -10,7 +10,7 @@ type Stats struct {
 	aiResponseChars   uint32
 }
 
-func NewStats() *Stats {
+func New() *Stats {
 	return &Stats{}
 }
 

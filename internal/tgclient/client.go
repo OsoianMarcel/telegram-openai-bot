@@ -21,7 +21,7 @@ type Client struct {
 	wg         sync.WaitGroup
 }
 
-func NewClient(tgAPIToken string) *Client {
+func New(tgAPIToken string) *Client {
 	tgClient, err := tgbotapi.NewBotAPI(tgAPIToken)
 	if err != nil {
 		log.Panic(err)

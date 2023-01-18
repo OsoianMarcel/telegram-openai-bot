@@ -16,7 +16,7 @@ type Client struct {
 // Creates new OpenAI API client.
 //
 // It requires a GPT Auth Token.
-func NewClient(gptAuthToken string) *Client {
+func New(gptAuthToken string) *Client {
 	return &Client{
 		gptAuthToken: gptAuthToken,
 		GptClient:    gogpt.NewClient(gptAuthToken),
