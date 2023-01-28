@@ -2,12 +2,12 @@ package gptclient
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
+// The GPT client structure.
 type Client struct {
 	gptAuthToken string
 	GptClient    *gogpt.Client
@@ -45,7 +45,11 @@ func (client *Client) AskAI(ctx context.Context, question string, user string) (
 	}
 
 	if len(resp.Choices) == 0 {
-		return "", errors.New("the completion has not choices")
+		return "", ErrRespNoChoices
+	}
+
+	if resp.Choices[0].Text == "" {
+		return "", ErrRespEmptyText
 	}
 
 	return resp.Choices[0].Text, nil

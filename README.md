@@ -28,6 +28,8 @@ To run this project, you will need to set the following environment variables:
 
 `TG_ADMIN_CHATID` - Bot owner chat id (used for feedback command).
 
+`STATS_FILE` - The file path for storing the statistics (JSON format).
+
 ## Example
 
 A bot example can be found here https://t.me/ask_openai_bot

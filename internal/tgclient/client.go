@@ -9,6 +9,7 @@ import (
 
 type HandlerFunc func(request *Request)
 
+// Client struct instance.
 type Client struct {
 	tgAPIToken string
 	tgClient   *tgbotapi.BotAPI
@@ -21,6 +22,7 @@ type Client struct {
 	wg         sync.WaitGroup
 }
 
+// Creates a new Telegram client.
 func New(tgAPIToken string) *Client {
 	tgClient, err := tgbotapi.NewBotAPI(tgAPIToken)
 	if err != nil {
@@ -47,21 +49,25 @@ func New(tgAPIToken string) *Client {
 	}
 }
 
+// Add a new command handler.
 func (client *Client) AddCommandHandler(cmdName string, handlerFunc HandlerFunc) {
 	client.commandHandlers[cmdName] = handlerFunc
 }
 
-func (client *Client) AddCommandNotFoundHandler(handlerFunc HandlerFunc) {
+// Set command not found handler.
+func (client *Client) SetCommandNotFoundHandler(handlerFunc HandlerFunc) {
 	client.commandNotFoundHandler = handlerFunc
 }
 
-func (client *Client) AddTextHandler(handlerFunc HandlerFunc) {
+// Set text handler.
+func (client *Client) SetTextHandler(handlerFunc HandlerFunc) {
 	client.textHandler = handlerFunc
 }
 
-func (client *Client) handlerWorker(wId int) {
+// Message worker.
+func (client *Client) messageWorker(wId int) {
 	defer client.wg.Done()
-	log.Printf("Worker #%d started", wId)
+	log.Printf("Worker #%d started.", wId)
 	for update := range client.updateChan {
 		req := Request{
 			WorkerID: wId,
@@ -88,47 +94,49 @@ func (client *Client) handlerWorker(wId int) {
 
 		client.textHandler(&req)
 	}
-	log.Printf("Worker #%d ended", wId)
+	log.Printf("Worker #%d ended.", wId)
 }
 
+// Start listening for Telegram updates.
 func (client *Client) Listen() {
-	log.Println("Start listener")
+	log.Println("Start listener.")
 	client.updateChan = make(chan tgbotapi.Update, UPDATE_CHANNEL_BUFFER)
 
-	// start the workers
-	for i := 0; i < MAX_HANDLER_WORKERS; i++ {
+	// Start the workers.
+	for i := 0; i < MAX_MESSAGE_WORKERS; i++ {
 		client.wg.Add(1)
-		go client.handlerWorker(i)
+		go client.messageWorker(i)
 	}
 
-	// get update channel
+	// Get update channel.
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
 	updates := client.tgClient.GetUpdatesChan(u)
 
 	for update := range updates {
-		// ignore any non-Message updates
+		// Ignore any non-Message updates.
 		if update.Message == nil {
 			continue
 		}
 
-		// ingore bot messages
+		// Ingore bot messages.
 		if update.Message.From.IsBot {
 			continue
 		}
 
-		// push the update into the update channel
+		// Push the update into the update channel.
 		client.updateChan <- update
 	}
 
-	// close the update channel which will stop the workers
+	// Close the update channel which will stop the workers.
 	close(client.updateChan)
 
-	// wait for the workers
+	// Wait for the workers.
 	client.wg.Wait()
-	log.Println("Listener has been stopped")
+	log.Println("Listener has been stopped.")
 }
 
+// Shutdown the telegram client.
 func (client *Client) Shutdown() {
 	client.tgClient.StopReceivingUpdates()
 }

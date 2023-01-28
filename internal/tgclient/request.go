@@ -6,12 +6,14 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// Request struct.
 type Request struct {
 	Update   *tgbotapi.Update
 	WorkerID int
 	BotAPI   *tgbotapi.BotAPI
 }
 
+// Send a message as reply.
 func (req *Request) Reply(message string) {
 	msg := tgbotapi.NewMessage(req.Update.Message.Chat.ID, message)
 	msg.ReplyToMessageID = req.Update.Message.MessageID
@@ -21,6 +23,7 @@ func (req *Request) Reply(message string) {
 	}
 }
 
+// Send a message.
 func (req *Request) Send(message string) {
 	msg := tgbotapi.NewMessage(req.Update.Message.Chat.ID, message)
 
@@ -29,6 +32,7 @@ func (req *Request) Send(message string) {
 	}
 }
 
+// Send action (ex.: typing).
 func (req *Request) SendAction(name string) {
 	chatAction := tgbotapi.NewChatAction(req.Update.Message.Chat.ID, name)
 

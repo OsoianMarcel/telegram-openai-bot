@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 
 	"github.com/OsoianMarcel/tg-bot/internal/gptclient"
@@ -20,7 +21,14 @@ import (
 func main() {
 	ctx := context.Background()
 
-	st := stats.New()
+	st := stats.New(os.Getenv("STATS_FILE"))
+
+	if st.IsFileSet() {
+		log.Printf("Load the statistics from the file (%s)...\n", st.GetFilePath())
+		if err := st.LoadFromFile(); err != nil {
+			log.Panicln(err)
+		}
+	}
 
 	tc := tgclient.New(os.Getenv("TG_APITOKEN"))
 	gptc := gptclient.New(os.Getenv("GPT_AUTH_TOKEN"))
@@ -112,83 +120,93 @@ func main() {
 	})
 
 	tc.AddCommandHandler("stats", func(req *tgclient.Request) {
-		reply := fmt.Sprintf(
-			"All messages: %d\n"+
-				"Invalid messages: %d\n"+
-				"AI errors: %d\n"+
-				"Request chars: %d\n"+
-				"Response chars: %d\n",
-			st.GetAiAllMessages(),
-			st.GetAiInvalidMessages(),
-			st.GetAiErrors(),
-			st.GetAiRequestChars(),
-			st.GetAiResponseChars(),
-		)
-		req.Reply(reply)
+		stats, err := st.Stats.GenString()
+
+		if err != nil {
+			log.Println(err)
+			req.Reply("Something went wrong. Can not generate the stats.")
+			return
+		}
+
+		req.Reply(stats)
 	})
 
-	tc.AddCommandNotFoundHandler(func(req *tgclient.Request) {
+	tc.SetCommandNotFoundHandler(func(req *tgclient.Request) {
 		req.Reply("Command not found.")
 	})
 
-	tc.AddTextHandler(func(req *tgclient.Request) {
-		st.IncAiAllMessages()
-
+	tc.SetTextHandler(func(req *tgclient.Request) {
 		text := req.Update.Message.Text
-		username := req.Update.Message.From.UserName
+		from := req.Update.Message.From
+		userId := from.ID
 
-		// validate the message
+		// Validate the message.
 		if len(text) < 2 {
-			st.IncAiInvalidMessages()
+			st.Stats.IncrAiInvalidErrors(userId)
 			req.Reply("The message is too short.")
 			return
 		}
 
 		if len(text) > 1024 {
-			st.IncAiInvalidMessages()
+			st.Stats.IncrAiInvalidErrors(userId)
 			req.Reply("The message is too long (max: 1024 characters).")
 			return
 		}
 
-		// send typing action
+		// Send typing action.
 		req.SendAction("typing")
 
-		// ask the OpenAI
-		res, err := gptc.AskAI(ctx, text, username)
+		// Ask the OpenAI.
+		aiUserId := strconv.FormatInt(userId, 10)
+		res, err := gptc.AskAI(ctx, text, aiUserId)
 		if err != nil || len(res) == 0 {
-			st.IncAiErrors()
-
 			if err != nil {
 				log.Println(err)
 			}
 
 			if errors.Is(err, context.DeadlineExceeded) {
-				req.Reply("Error: AI request timeout occurred. Try again.")
+				req.Reply("Error: AI request timeout occurred...\nPlease, try again.")
+				st.Stats.IncrAiTimeoutErrors(userId)
 				return
 			}
 
-			req.Reply("Error: AI is unavailable. Try again.")
-
+			req.Reply("Error: The AI is unavailable or has no response...\nPlease, try again.")
+			st.Stats.IncrAiErrors(userId)
 			return
 		}
 
-		st.AddAiRequestChars(uint32(len(text)))
-		st.AddAiResponseChars(uint32(len(res)))
-
-		// reply
 		req.Reply(res)
+		st.Stats.IncrAiResponses(userId)
 	})
 
-	// listen for stop signal
+	var wg sync.WaitGroup
+
+	// Listen for stop signal.
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 		<-quit
 		log.Println("Graceful shutdown in progress...")
+
+		log.Println("Shutdown the telegram client...")
 		tc.Shutdown()
+
+		log.Println("Exit the graceful shutdown goroutine.")
 	}()
 
+	// The main thread is blocked by the method Listen until the client is not closed.
 	tc.Listen()
+	log.Println("The telegram client has been stopped.")
+
+	if st.IsFileSet() {
+		log.Printf("Write the statistics to the file (%s)...\n", st.GetFilePath())
+		if err := st.WriteToFile(); err != nil {
+			log.Println(err)
+		}
+	}
 
 	log.Println("Exit.")
 }
