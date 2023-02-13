@@ -107,9 +107,11 @@ func main() {
 	tc.AddCommandHandler("me", func(req *tgclient.Request) {
 		reply := fmt.Sprintf(
 			"Username: %s\n"+
-				"User ID: %d",
+				"User ID: %d\n"+
+				"Stats ID: %s",
 			req.Update.Message.From.UserName,
 			req.Update.Message.From.ID,
+			stats.HashUserId(req.Update.Message.From.ID),
 		)
 		req.Reply(reply)
 	})
@@ -158,19 +160,42 @@ func main() {
 
 		// Ask the OpenAI.
 		aiUserId := strconv.FormatInt(userId, 10)
-		res, err := gptc.AskAI(ctx, text, aiUserId)
-		if err != nil || len(res) == 0 {
+		var (
+			err         error
+			res         string
+			countErrors uint8
+		)
+		// Retry logic.
+		for i := 0; i < 3; i++ {
+			res, err = gptc.AskAI(ctx, text, aiUserId)
+			// Stop on sucessfull response.
+			if err == nil {
+				break
+			}
+			// Increase error counter.
+			countErrors++
+			// Stop when no choises.
+			if errors.Is(err, gptclient.ErrRespNoChoices) {
+				break
+			}
+		}
+		if err != nil {
 			if err != nil {
-				log.Println(err)
+				log.Printf("last error: %s (count errors: %d)\n", err, countErrors)
 			}
 
 			if errors.Is(err, context.DeadlineExceeded) {
-				req.Reply("Error: AI request timeout occurred...\nPlease, try again.")
+				req.Reply("Error: AI request timeout occurred.\nPlease, try again.")
 				st.Stats.IncrAiTimeoutErrors(userId)
 				return
 			}
 
-			req.Reply("Error: The AI is unavailable or has no response...\nPlease, try again.")
+			if errors.Is(err, gptclient.ErrRespNoChoices) || errors.Is(err, gptclient.ErrRespEmptyText) {
+				req.Reply("Error: The AI has no response to your question.")
+				return
+			}
+
+			req.Reply("Error: The AI is unavailable or has no response.\nPlease, try again.")
 			st.Stats.IncrAiErrors(userId)
 			return
 		}
