@@ -166,7 +166,7 @@ func main() {
 			countErrors uint8
 		)
 		// Retry logic.
-		for i := 0; i < 3; i++ {
+		for i := 0; i < 2; i++ {
 			res, err = gptc.AskAI(ctx, text, aiUserId)
 			// Stop on sucessfull response.
 			if err == nil {
