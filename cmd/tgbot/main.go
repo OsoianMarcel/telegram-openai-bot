@@ -192,6 +192,7 @@ func main() {
 
 			if errors.Is(err, gptclient.ErrRespNoChoices) || errors.Is(err, gptclient.ErrRespEmptyText) {
 				req.Reply("Error: The AI has no response to your question.")
+				st.Stats.IncrAiErrors(userId)
 				return
 			}
 

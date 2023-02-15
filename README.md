@@ -36,6 +36,13 @@ A bot example can be found here https://t.me/ask_openai_bot
 
 Warning: This bot is served from my home Raspberry Pi, so I cannot guarantee 100% uptime. 
 
+## TODO
+
+- Keep sending typing action until the AI responds.
+- Flush dirty stats to disk once in X seconds.
+- Change the stats model (no user stats, daily, weekly, monthly stats).
+- Implement conversational mode.
+
 ## Give a Star ⭐
 If you find this repository useful, please give it a star to show your support for this project. 😊
 
