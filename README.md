@@ -38,6 +38,7 @@ Warning: This bot is served from my home Raspberry Pi, so I cannot guarantee 100
 
 ## TODO
 
+- Store Telegram update offset, and use it on startup.
 - Keep sending typing action until the AI responds.
 - Flush dirty stats to disk once in X seconds.
 - Change the stats model (no user stats, daily, weekly, monthly stats).

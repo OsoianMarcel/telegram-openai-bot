@@ -31,7 +31,15 @@ func (s *Stats) GenString() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	jb, err := json.MarshalIndent(s, "", "\t")
+	v := struct {
+		CommonStats
+		UsersCount int `json:"users_count"`
+	}{
+		CommonStats: s.CommonStats,
+		UsersCount:  len(s.Users),
+	}
+
+	jb, err := json.MarshalIndent(v, "", "\t")
 	if err != nil {
 		return "", err
 	}
