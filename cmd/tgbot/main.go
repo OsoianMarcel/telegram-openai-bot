@@ -14,6 +14,7 @@ import (
 	"github.com/OsoianMarcel/tg-bot/internal/gptclient"
 	"github.com/OsoianMarcel/tg-bot/internal/stats"
 	"github.com/OsoianMarcel/tg-bot/internal/tgclient"
+	"github.com/OsoianMarcel/tg-bot/internal/tgtyping"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -32,6 +33,8 @@ func main() {
 
 	tc := tgclient.New(os.Getenv("TG_APITOKEN"))
 	gptc := gptclient.New(os.Getenv("GPT_AUTH_TOKEN"))
+	tgTyping := tgtyping.New(tc.TgClient)
+	tgTyping.StarTicker()
 
 	tc.AddCommandHandler("start", func(req *tgclient.Request) {
 		req.Send(
@@ -156,7 +159,8 @@ func main() {
 		}
 
 		// Send typing action.
-		req.SendAction("typing")
+		stopTyping := tgTyping.Typing(req.Update.Message.Chat.ID)
+		defer stopTyping()
 
 		// Ask the OpenAI.
 		aiUserId := strconv.FormatInt(userId, 10)
@@ -168,17 +172,18 @@ func main() {
 		// Retry logic.
 		for i := 0; i < 2; i++ {
 			res, err = gptc.AskAI(ctx, text, aiUserId)
-			// Stop on sucessfull response.
+			// Stop on successful response.
 			if err == nil {
 				break
 			}
 			// Increase error counter.
 			countErrors++
-			// Stop when no choises.
+			// Stop when no choices.
 			if errors.Is(err, gptclient.ErrRespNoChoices) {
 				break
 			}
 		}
+		stopTyping()
 		if err != nil {
 			if err != nil {
 				log.Printf("last error: %s (count errors: %d)\n", err, countErrors)
@@ -216,6 +221,9 @@ func main() {
 		signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 		<-quit
 		log.Println("Graceful shutdown in progress...")
+
+		log.Println("Shutdown the typing service...")
+		tgTyping.Shutdown()
 
 		log.Println("Shutdown the telegram client...")
 		tc.Shutdown()

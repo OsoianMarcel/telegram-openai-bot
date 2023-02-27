@@ -12,7 +12,7 @@ type HandlerFunc func(request *Request)
 // Client struct instance.
 type Client struct {
 	tgAPIToken string
-	tgClient   *tgbotapi.BotAPI
+	TgClient   *tgbotapi.BotAPI
 
 	commandHandlers        map[string]HandlerFunc
 	commandNotFoundHandler HandlerFunc
@@ -44,7 +44,7 @@ func New(tgAPIToken string) *Client {
 
 	return &Client{
 		tgAPIToken:      tgAPIToken,
-		tgClient:        tgClient,
+		TgClient:        tgClient,
 		commandHandlers: make(map[string]HandlerFunc),
 	}
 }
@@ -71,7 +71,7 @@ func (client *Client) messageWorker(wId int) {
 	for update := range client.updateChan {
 		req := Request{
 			WorkerID: wId,
-			BotAPI:   client.tgClient,
+			BotAPI:   client.TgClient,
 			Update:   &update,
 		}
 
@@ -111,7 +111,7 @@ func (client *Client) Listen() {
 	// Get update channel.
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
-	updates := client.tgClient.GetUpdatesChan(u)
+	updates := client.TgClient.GetUpdatesChan(u)
 
 	for update := range updates {
 		// Ignore any non-Message updates.
@@ -138,5 +138,5 @@ func (client *Client) Listen() {
 
 // Shutdown the telegram client.
 func (client *Client) Shutdown() {
-	client.tgClient.StopReceivingUpdates()
+	client.TgClient.StopReceivingUpdates()
 }
